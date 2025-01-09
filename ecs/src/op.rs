@@ -3,5 +3,5 @@ use pyo3::prelude::*;
 
 #[derive(Component)]
 pub struct Op {
-    pub path: String,
+    pub id: u32,
 }

@@ -3,8 +3,8 @@ use std::{fmt::Debug, marker::PhantomData};
 use bevy_ecs::{prelude::*, system::SystemParam};
 use pyo3::{
     intern,
-    types::{PyAnyMethods, PyModule},
-    Bound, Py, PyAny, Python,
+    types::{PyAnyMethods, PyList, PyListMethods, PyModule, PyString},
+    Bound, FromPyObject, IntoPyObject, Py, PyAny, PyResult, Python,
 };
 use tracing::{debug, instrument};
 
@@ -67,13 +67,16 @@ impl<'py> TDApi<'py> {
         let td = py.import(intern!(py, "td")).unwrap();
         Self { td }
     }
+    pub fn py(&self) -> Python {
+        self.td.py()
+    }
 
     #[instrument]
-    pub fn op(&self, path: &str) -> TDApiOp {
-        debug!("Getting op for path: {}", path);
+    pub fn op(&self, td_id: u32) -> TDApiOp {
+        debug!("Getting op with TD ID: {}", td_id);
         let op = self
             .td
-            .call_method1(intern!(self.td.py(), "op"), (path,))
+            .call_method1(intern!(self.td.py(), "op"), (td_id,))
             .unwrap();
         debug!("Got op {op}");
         TDApiOp { op }
@@ -82,6 +85,42 @@ impl<'py> TDApi<'py> {
 
 pub struct TDApiOp<'py> {
     op: Bound<'py, PyAny>,
+}
+
+impl<'py> TDApiOp<'py> {
+    pub fn pars(&self) -> impl Iterator<Item = ParInfo> {
+        let py = self.op.py();
+        let pars = self.op.call_method0(intern!(py, "pars")).unwrap();
+        let pars = pars.downcast::<PyList>().unwrap();
+        pars.iter().map(|par| par.extract().unwrap())
+    }
+    pub fn set_par<N: IntoPyObject<'py, Target = PyString>>(
+        &self,
+        name: N,
+        val: &Bound<'py, PyAny>,
+    ) -> PyResult<()> {
+        let py = self.op.py();
+        self.op
+            .getattr(intern!(py, "par"))?
+            .getattr(name)?
+            .setattr(intern!(py, "val"), val)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct ParInfo<'py> {
+    name: String,
+    value: Bound<'py, PyAny>,
+}
+
+impl<'py> FromPyObject<'py> for ParInfo<'py> {
+    fn extract_bound(ob: &Bound<'py, PyAny>) -> pyo3::PyResult<Self> {
+        let py = ob.py();
+        let name = ob.getattr(intern!(py, "name")).unwrap().extract().unwrap();
+        let value = ob.getattr(intern!(py, "val")).unwrap();
+        Ok(Self { name, value })
+    }
 }
 
 #[instrument(skip(world, api))]

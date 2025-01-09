@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::*;
-use pyo3::prelude::*;
+use pyo3::{intern, prelude::*, IntoPyObjectExt};
+use rand::{thread_rng, Rng};
 use tracing::{debug, field::debug, instrument};
 
 use crate::{
@@ -20,14 +21,17 @@ impl TDCommand for RandomCommand {
     #[instrument]
     fn apply(self, world: &mut World, api: &crate::touchdesigner::TDApi) {
         debug!("Applying RandomCommand");
-        let path = world
-            .query::<&Op>()
-            .get(world, self.op)
-            .unwrap()
-            .path
-            .as_str();
-        let pars = api.op(path);
-        debug!("RandomCommand applied to path: {}", path);
+        let id = world.query::<&Op>().get(world, self.op).unwrap().id;
+        let op = api.op(id);
+        let py = api.py();
+        op.set_par(
+            intern!(py, "gain"),
+            &thread_rng()
+                .gen_range(0.0..2.0)
+                .into_bound_py_any(py)
+                .unwrap(),
+        )
+        .unwrap();
     }
 }
 

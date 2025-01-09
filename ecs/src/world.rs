@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use bevy_ecs::{
     component::{ComponentInfo, Components},
     prelude::*,
@@ -23,19 +25,15 @@ pub struct PyWorld {
 
 impl PyWorld {
     #[instrument(skip(self))]
-    fn id(&mut self, path: &str) -> Entity {
-        debug!("Getting or creating entity for path: {}", path);
+    fn id(&mut self, td_id: u32) -> Entity {
+        debug!("Getting or creating entity for op {}", td_id);
         self.world
             .query::<(Entity, &Op)>()
             .iter(&self.world)
-            .find_map(|(e, op)| if op.path == path { Some(e) } else { None })
+            .find_map(|(e, op)| if op.id == td_id { Some(e) } else { None })
             .unwrap_or_else(|| {
-                debug!("Spawning new entity for path: {}", path);
-                self.world
-                    .spawn(Op {
-                        path: path.to_string(),
-                    })
-                    .id()
+                debug!("Spawning new entity for op: {}", td_id);
+                self.world.spawn(Op { id: td_id }).id()
             })
     }
 }
@@ -49,7 +47,8 @@ impl PyWorld {
         let mut update = Schedule::new(Update);
         let update_label = update.label();
         update.add_systems(randomize_pars);
-        let post_update = Schedule::new(PostUpdate);
+        let mut post_update = Schedule::new(PostUpdate);
+        post_update.add_systems(report_world);
         let post_update_label = post_update.label();
 
         let mut world = World::new();
@@ -65,15 +64,37 @@ impl PyWorld {
     }
 
     #[instrument(skip(self))]
-    fn insert(&mut self, path: &str, component: OpComponent) {
-        debug!("Inserting component for path: {}", path);
-        let entity = self.id(path);
+    fn insert(&mut self, td_id: u32, component: OpComponent) {
+        debug!("Inserting component for op: {}", td_id);
+        let entity = self.id(td_id);
         match component {
             OpComponent::Random(comp) => {
                 debug!("Inserting Random component");
                 self.world.commands().entity(entity).insert(comp)
             }
         };
+        self.world.flush();
+    }
+
+    #[instrument(skip(self))]
+    fn remove(&mut self, td_id: u32, component: OpComponent) {
+        debug!("Removing component from op: {}", td_id);
+        let entity = self.id(td_id);
+        match component {
+            OpComponent::Random(comp) => {
+                debug!("Inserting Random component");
+                let id = self.world.components().get_id(comp.type_id()).unwrap();
+                self.world.commands().entity(entity).remove_by_id(id);
+            }
+        };
+        self.world.flush();
+    }
+
+    #[instrument(skip(self))]
+    fn despawn(&mut self, td_id: u32) {
+        let entity = self.id(td_id);
+        self.world.commands().entity(entity).despawn();
+        self.world.flush();
     }
 
     #[instrument(skip(self))]
@@ -87,4 +108,9 @@ impl PyWorld {
             apply_deferred_td(&mut self.world, &api);
         });
     }
+}
+
+#[instrument(skip(world))]
+fn report_world(world: &mut World) {
+    debug!("entities: {:?}", world.entities());
 }
