@@ -9,6 +9,7 @@ name = "ecs"
 crate-type = ["cdylib"]
 
 [dependencies]
+bevy = { version = "0.15.1", default-features = false }
 bevy_ecs = "0.15.1"
 pyo3 = "0.23.3"
 tracing = "0.1.41"

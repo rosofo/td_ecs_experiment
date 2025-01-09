@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 pub use random::*;
 
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum OpComponent {
     Random(random::Random),
 }

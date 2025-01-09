@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{fmt::Debug, marker::PhantomData};
 
 use bevy_ecs::{prelude::*, system::SystemParam};
 use pyo3::{
@@ -13,7 +13,9 @@ use tracing::{debug, instrument};
 pub struct TDCommands<'w>(ResMut<'w, TDCommandQueue>);
 
 impl TDCommands<'_> {
+    #[instrument(skip(self))]
     pub fn queue(&mut self, cmd: impl TDCommand) {
+        debug!("Queueing command");
         self.0.queue.push(Box::new(cmd));
     }
 }
@@ -26,7 +28,7 @@ pub struct TDCommandQueue {
 #[derive(Event)]
 pub struct TDCommandDeferred(Box<dyn TDCommand>);
 
-pub trait TDCommand: BoxTDCommand + Send + Sync + 'static {
+pub trait TDCommand: BoxTDCommand + Debug + Send + Sync + 'static {
     fn apply(self, world: &mut World, api: &TDApi);
 }
 
@@ -53,22 +55,27 @@ impl<C: TDCommand + ?Sized> TDCommand for Box<C> {
 /// ## Note
 ///
 /// We have to acquire the GIL at some point to talk to TD, and that point is here!
+#[derive(Debug)]
 pub struct TDApi<'py> {
     td: Bound<'py, PyModule>,
 }
 
 impl<'py> TDApi<'py> {
+    #[instrument(skip(py))]
     pub fn new(py: Python<'py>) -> Self {
+        debug!("Creating new TDApi instance");
         let td = py.import(intern!(py, "td")).unwrap();
         Self { td }
     }
 
+    #[instrument]
     pub fn op(&self, path: &str) -> TDApiOp {
+        debug!("Getting op for path: {}", path);
         let op = self
             .td
             .call_method1(intern!(self.td.py(), "op"), (path,))
             .unwrap();
-        debug!("got op {op}");
+        debug!("Got op {op}");
         TDApiOp { op }
     }
 }
@@ -81,8 +88,9 @@ pub struct TDApiOp<'py> {
 pub fn apply_deferred_td(world: &mut World, api: &TDApi) {
     let mut commands = world.get_resource_mut::<TDCommandQueue>().unwrap();
     let len = commands.queue.len();
-    debug!("appying {len} commands");
+    debug!("Applying {len} commands");
     for command in commands.queue.drain(..).collect::<Vec<_>>() {
+        debug!("Applying command");
         command.apply(world, api);
     }
 }

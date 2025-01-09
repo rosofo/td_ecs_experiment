@@ -8,15 +8,18 @@ use crate::{
 };
 
 #[pyclass]
-#[derive(Component, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct Random;
 
+#[derive(Debug)]
 struct RandomCommand {
     op: Entity,
 }
 
 impl TDCommand for RandomCommand {
+    #[instrument]
     fn apply(self, world: &mut World, api: &crate::touchdesigner::TDApi) {
+        debug!("Applying RandomCommand");
         let path = world
             .query::<&Op>()
             .get(world, self.op)
@@ -24,6 +27,7 @@ impl TDCommand for RandomCommand {
             .path
             .as_str();
         let pars = api.op(path);
+        debug!("RandomCommand applied to path: {}", path);
     }
 }
 

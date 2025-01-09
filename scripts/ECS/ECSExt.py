@@ -9,13 +9,12 @@ NoNode: NoNode = (
 ###
 
 import ecs
-from ecs import ecs
 
 
 class ECSExt:
     def __init__(self, ownerComp):
         self.ownerComp = ownerComp
-        self.World = ecs.World()
+        self.World = ecs.ecs.World()
 
         CustomParHelper.Init(
             self, ownerComp, enable_properties=True, enable_callbacks=True
