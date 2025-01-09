@@ -1,8 +1,12 @@
 use std::marker::PhantomData;
 
 use bevy_ecs::{prelude::*, system::SystemParam};
-
-type NotSendSync = PhantomData<*const ()>;
+use pyo3::{
+    intern,
+    types::{PyAnyMethods, PyModule},
+    Bound, Py, PyAny, Python,
+};
+use tracing::{debug, instrument};
 
 /// Queue commands to be run against the [TDApi]
 #[derive(SystemParam)]
@@ -46,23 +50,39 @@ impl<C: TDCommand + ?Sized> TDCommand for Box<C> {
 
 /// Bindings to the TD python API
 ///
-/// ## Notes
+/// ## Note
 ///
-/// - We have to acquire the GIL at some point to talk to TD, and that point is here!
-/// - Implemented as a non-send resource because most TD methods aren't threadsafe
-#[derive(Clone, Copy)]
-pub struct TDApi {
-    _non_send_and_sync: NotSendSync,
+/// We have to acquire the GIL at some point to talk to TD, and that point is here!
+pub struct TDApi<'py> {
+    td: Bound<'py, PyModule>,
 }
 
-impl TDApi {
-    pub fn op(path: &str) -> TDApiOp {}
+impl<'py> TDApi<'py> {
+    pub fn new(py: Python<'py>) -> Self {
+        let td = py.import(intern!(py, "td")).unwrap();
+        Self { td }
+    }
+
+    pub fn op(&self, path: &str) -> TDApiOp {
+        let op = self
+            .td
+            .call_method1(intern!(self.td.py(), "op"), (path,))
+            .unwrap();
+        debug!("got op {op}");
+        TDApiOp { op }
+    }
 }
 
-pub fn apply_deferred_td(world: &mut World) {
-    let api = *world.get_non_send_resource::<TDApi>().unwrap();
+pub struct TDApiOp<'py> {
+    op: Bound<'py, PyAny>,
+}
+
+#[instrument(skip(world, api))]
+pub fn apply_deferred_td(world: &mut World, api: &TDApi) {
     let mut commands = world.get_resource_mut::<TDCommandQueue>().unwrap();
+    let len = commands.queue.len();
+    debug!("appying {len} commands");
     for command in commands.queue.drain(..).collect::<Vec<_>>() {
-        command.apply(world, &api);
+        command.apply(world, api);
     }
 }

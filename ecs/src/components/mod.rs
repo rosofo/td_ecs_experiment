@@ -8,3 +8,11 @@ pub use random::*;
 pub enum OpComponent {
     Random(random::Random),
 }
+
+#[pymethods]
+impl OpComponent {
+    #[staticmethod]
+    fn random() -> Self {
+        OpComponent::Random(Random)
+    }
+}

@@ -7,10 +7,10 @@ use bevy_ecs::{
 use pyo3::prelude::*;
 
 use crate::{
-    components::OpComponent,
+    components::{randomize_pars, OpComponent},
     op::Op,
     schedule::{PostUpdate, Update},
-    touchdesigner::apply_deferred_td,
+    touchdesigner::{apply_deferred_td, TDApi, TDCommandQueue},
 };
 
 #[pyclass(name = "World")]
@@ -39,13 +39,15 @@ impl PyWorld {
 impl PyWorld {
     #[new]
     fn new() -> Self {
-        let update = Schedule::new(Update);
+        let mut update = Schedule::new(Update);
         let update_label = update.label();
-        let mut post_update = Schedule::new(PostUpdate);
+        update.add_systems(randomize_pars);
+        let post_update = Schedule::new(PostUpdate);
         let post_update_label = post_update.label();
-        post_update.add_systems(apply_deferred_td);
 
         let mut world = World::new();
+        world.insert_resource(TDCommandQueue { queue: Vec::new() });
+
         world.add_schedule(update);
         world.add_schedule(post_update);
         Self {
@@ -64,5 +66,10 @@ impl PyWorld {
     fn run(&mut self) {
         self.world.run_schedule(self.update);
         self.world.run_schedule(self.post_update);
+
+        Python::with_gil(|py| {
+            let api = TDApi::new(py);
+            apply_deferred_td(&mut self.world, &api);
+        });
     }
 }

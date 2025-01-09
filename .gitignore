@@ -5,3 +5,4 @@ logs
 .venv
 */target
 TDImportCache
+jaeger
