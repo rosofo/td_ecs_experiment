@@ -59,12 +59,19 @@ class ECSExt:
         changes = []
         components = self.getCurrentComponents()
 
-        deleted_set = set(self.lastComponents.keys()).difference(components)
-        for comp_id in deleted_set:
+        deleted_last_ops = {op_id for op_id in self.lastOps if op(op_id) is None}
+        for op_id in deleted_last_ops:
+            changes.append(ECSChange("despawned", op_id, None))
+
+        deleted_comp_set = set(self.lastComponents.keys()).difference(components)
+        for comp_id in deleted_comp_set:
             ops_to_remove_from = self.lastComponents.get(comp_id)
+
             component = self.knownInstances.get(comp_id)
 
             if ops_to_remove_from and component is not None:
+                # skip redundant removals on despawned ops
+                ops_to_remove_from = set(ops_to_remove_from) - deleted_last_ops
                 for op_id in ops_to_remove_from:
                     changes.append(ECSChange("removed", op_id, component))
 
@@ -72,20 +79,22 @@ class ECSExt:
             component = op(comp_id).Component
             self.knownInstances[comp_id] = component
             added_set = set(ops).difference(set(self.lastComponents.get(comp_id, [])))
-            removed_set = set(self.lastComponents.get(comp_id, [])).difference(set(ops))
+            removed_set = (
+                set(self.lastComponents.get(comp_id, []))
+                .difference(set(ops))
+                .difference(
+                    deleted_last_ops
+                )  # skip redundant removals on despawned ops
+            )
 
             for op_id in added_set:
                 changes.append(ECSChange("inserted", op_id, component))
             for op_id in removed_set:
                 changes.append(ECSChange("removed", op_id, component))
 
-        ops_with_comps_set = {op_id for ops in components.values() for op_id in ops}
-        despawned_set = self.lastOps.difference(ops_with_comps_set)
-        for op_id in despawned_set:
-            changes.append(ECSChange("despawned", op_id, None))
-
         debug(changes)
         self.lastComponents = components
+        ops_with_comps_set = {op_id for ops in components.values() for op_id in ops}
         self.lastOps = ops_with_comps_set
         return changes
 
