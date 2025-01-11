@@ -10,7 +10,7 @@ use pyo3::prelude::*;
 use tracing::{debug, instrument};
 
 use crate::{
-    components::{randomize_pars, OpComponent},
+    components::{randomize_pars, Random},
     op::Op,
     touchdesigner::{apply_deferred_td, TDApi, TDCommandQueue},
 };
@@ -36,6 +36,25 @@ impl PyWorld {
                 world.spawn(Op { id: td_id }).id()
             })
     }
+    #[instrument(skip(self, component))]
+    fn insert(&mut self, td_id: u32, component: impl Component) {
+        debug!("Inserting component for op: {}", td_id);
+        let entity = self.id(td_id);
+        self.app
+            .world_mut()
+            .commands()
+            .entity(entity)
+            .insert(component);
+        self.app.world_mut().flush();
+    }
+
+    #[instrument(skip(self))]
+    fn remove<C: Component>(&mut self, td_id: u32) {
+        debug!("Removing component from op: {}", td_id);
+        let entity = self.id(td_id);
+        self.app.world_mut().commands().entity(entity).remove::<C>();
+        self.app.world_mut().flush();
+    }
 }
 
 #[pymethods]
@@ -59,46 +78,18 @@ impl PyWorld {
     }
 
     #[instrument(skip(self))]
-    fn insert(&mut self, td_id: u32, component: OpComponent) {
-        debug!("Inserting component for op: {}", td_id);
-        let entity = self.id(td_id);
-        match component {
-            OpComponent::Random(comp) => {
-                debug!("Inserting Random component");
-                self.app.world_mut().commands().entity(entity).insert(comp)
-            }
-        };
-        self.app.world_mut().flush();
-    }
-
-    #[instrument(skip(self))]
-    fn remove(&mut self, td_id: u32, component: OpComponent) {
-        debug!("Removing component from op: {}", td_id);
-        let entity = self.id(td_id);
-        match component {
-            OpComponent::Random(comp) => {
-                debug!("Inserting Random component");
-                let id = self
-                    .app
-                    .world()
-                    .components()
-                    .get_id(comp.type_id())
-                    .unwrap();
-                self.app
-                    .world_mut()
-                    .commands()
-                    .entity(entity)
-                    .remove_by_id(id);
-            }
-        };
-        self.app.world_mut().flush();
-    }
-
-    #[instrument(skip(self))]
     fn despawn(&mut self, td_id: u32) {
         let entity = self.id(td_id);
         self.app.world_mut().commands().entity(entity).despawn();
         self.app.world_mut().flush();
+    }
+
+    fn insert_random(&mut self, td_id: u32) {
+        self.insert(td_id, Random);
+    }
+
+    fn remove_random(&mut self, td_id: u32) {
+        self.remove::<Random>(td_id);
     }
 
     #[instrument(skip(self))]

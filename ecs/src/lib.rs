@@ -3,7 +3,7 @@ mod op;
 mod touchdesigner;
 mod world;
 
-use components::{OpComponent, Random};
+use components::Random;
 use pyo3::prelude::*;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
@@ -23,7 +23,6 @@ fn ecs(m: &Bound<'_, PyModule>) -> PyResult<()> {
         .init();
 
     m.add_class::<PyWorld>()?;
-    m.add_class::<OpComponent>()?;
     m.add_class::<Random>()?;
     Ok(())
 }
