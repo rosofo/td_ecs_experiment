@@ -1,3 +1,4 @@
+mod commands;
 mod components;
 mod op;
 mod touchdesigner;

@@ -1,16 +1,25 @@
-use bevy_ecs::prelude::*;
+use bevy::prelude::*;
 use pyo3::{intern, prelude::*, IntoPyObjectExt};
 use rand::{thread_rng, Rng};
 use tracing::{debug, field::debug, instrument};
 
 use crate::{
+    commands::td_queue,
     op::Op,
     touchdesigner::{TDCommand, TDCommands},
 };
 
+use super::TDComponent;
+
 #[pyclass]
 #[derive(Component, Debug, Clone)]
 pub struct Random;
+
+impl TDComponent for Random {
+    fn plugin(app: &mut bevy::prelude::App) {
+        app.add_systems(Update, randomize_pars.pipe(td_queue));
+    }
+}
 
 #[derive(Debug)]
 struct RandomCommand {
@@ -35,10 +44,14 @@ impl TDCommand for RandomCommand {
     }
 }
 
-#[instrument(skip(query, cmd))]
-pub fn randomize_pars(query: Query<(Entity, &Random)>, mut cmd: TDCommands) {
-    for (entity, random) in query.iter() {
-        debug!("Queuing random command for {entity}");
-        cmd.queue(RandomCommand { op: entity });
-    }
+#[instrument(skip(query))]
+pub fn randomize_pars(query: Query<(Entity, &Random)>) -> Vec<Box<dyn TDCommand>> {
+    query
+        .iter()
+        .map(|(entity, _)| {
+            debug!("Queuing random command for {entity}");
+            let cmd: Box<dyn TDCommand> = Box::from(RandomCommand { op: entity });
+            cmd
+        })
+        .collect::<Vec<Box<dyn TDCommand>>>()
 }

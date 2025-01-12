@@ -32,6 +32,14 @@ pub trait TDCommand: BoxTDCommand + Debug + Send + Sync + 'static {
     fn apply(self, world: &mut World, api: &TDApi);
 }
 
+impl TDCommand for Vec<Box<dyn TDCommand>> {
+    fn apply(self, world: &mut World, api: &TDApi) {
+        for cmd in self {
+            cmd.apply(world, api);
+        }
+    }
+}
+
 /// Solution for calling apply on Box<dyn TDCommand>, because we need to store them before executing
 /// Courtesy of https://users.rust-lang.org/t/calling-a-method-with-a-self-parameter-on-box-dyn-trait/106220/3
 pub trait BoxTDCommand: Send + Sync + 'static {
@@ -109,8 +117,8 @@ impl<'py> TDApiOp<'py> {
 
 #[derive(Debug)]
 pub struct ParInfo<'py> {
-    name: String,
-    value: Bound<'py, PyAny>,
+    pub name: String,
+    pub value: Bound<'py, PyAny>,
 }
 
 impl<'py> FromPyObject<'py> for ParInfo<'py> {

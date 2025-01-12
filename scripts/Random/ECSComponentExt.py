@@ -14,7 +14,7 @@ from ecs import ecs
 class ECSComponentExt:
     def __init__(self, ownerComp):
         self.ownerComp = ownerComp
-        self.Component = ecs.OpComponent.random()
+        self.Component = "random"
         CustomParHelper.Init(
             self, ownerComp, enable_properties=True, enable_callbacks=True
         )
