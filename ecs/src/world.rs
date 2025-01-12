@@ -1,4 +1,4 @@
-use std::{any::Any, sync::Arc};
+use std::{any::Any, sync::Arc, time::Duration};
 
 use bevy::{
     app::ScheduleRunnerPlugin,
@@ -10,7 +10,7 @@ use pyo3::prelude::*;
 use tracing::{debug, instrument};
 
 use crate::{
-    components::{randomize_pars, Random},
+    components::{randomize_pars, sample_ops, Random, Sample},
     op::Op,
     touchdesigner::{apply_deferred_td, TDApi, TDCommandQueue},
 };
@@ -67,7 +67,7 @@ impl PyWorld {
         app.add_plugins(MinimalPlugins.set(ScheduleRunnerPlugin::run_once()));
         app.add_plugins(RemotePlugin::default());
         app.add_plugins(RemoteHttpPlugin::default());
-        app.add_systems(Update, randomize_pars);
+        app.add_systems(Update, (randomize_pars, sample_ops));
         // app.add_systems(PostUpdate, report_world);
         app.insert_resource(TDCommandQueue { queue: Vec::new() });
 
@@ -90,6 +90,13 @@ impl PyWorld {
 
     fn remove_random(&mut self, td_id: u32) {
         self.remove::<Random>(td_id);
+    }
+    fn insert_sample(&mut self, td_id: u32, millis: u64, filter: String) {
+        self.insert(td_id, Sample::new(Duration::from_millis(millis), filter));
+    }
+
+    fn remove_sample(&mut self, td_id: u32) {
+        self.remove::<Sample>(td_id);
     }
 
     #[instrument(skip(self))]

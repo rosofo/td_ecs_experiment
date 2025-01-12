@@ -109,8 +109,8 @@ impl<'py> TDApiOp<'py> {
 
 #[derive(Debug)]
 pub struct ParInfo<'py> {
-    name: String,
-    value: Bound<'py, PyAny>,
+    pub name: String,
+    pub value: Bound<'py, PyAny>,
 }
 
 impl<'py> FromPyObject<'py> for ParInfo<'py> {

@@ -21,14 +21,14 @@ from ecs import ecs
 class ECSChange:
     type: Literal["inserted", "removed", "despawned"]
     op: int
-    component: ecs.OpComponent | None
+    component: str | None
 
 
 class ECSExt:
     # A mapping of components to the ops they're attached to
     lastComponents: dict[int, list[int]]
     # A mapping of components to their types
-    knownInstances: dict[int, ecs.OpComponent]
+    knownInstances: dict[int, str]
     # Ops with components attached
     lastOps: set[int]
 
@@ -102,8 +102,11 @@ class ECSExt:
         changes = self.collectChanges()
         for change in changes:
             if change.type == "inserted":
-                self.World.insert(change.op, change.component)
+                if change.component == "random":
+                    self.World.insert_random(change.op)
+                elif change.component == "sample":
+                    self.World.insert_sample(change.op, 300, "amp")
             elif change.type == "removed":
-                self.World.remove(change.op, change.component)
+                getattr(self.World, f"remove_{change.component}")(change.op)
             elif change.type == "despawned":
                 self.World.despawn(change.op)
