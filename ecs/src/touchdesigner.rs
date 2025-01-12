@@ -63,7 +63,6 @@ pub struct TDApi<'py> {
 impl<'py> TDApi<'py> {
     #[instrument(skip(py))]
     pub fn new(py: Python<'py>) -> Self {
-        debug!("Creating new TDApi instance");
         let td = py.import(intern!(py, "td")).unwrap();
         Self { td }
     }
@@ -126,10 +125,8 @@ impl<'py> FromPyObject<'py> for ParInfo<'py> {
 #[instrument(skip(world, api))]
 pub fn apply_deferred_td(world: &mut World, api: &TDApi) {
     let mut commands = world.get_resource_mut::<TDCommandQueue>().unwrap();
-    let len = commands.queue.len();
-    debug!("Applying {len} commands");
     for command in commands.queue.drain(..).collect::<Vec<_>>() {
-        debug!("Applying command");
+        debug!(?command, "Applying command");
         command.apply(world, api);
     }
 }

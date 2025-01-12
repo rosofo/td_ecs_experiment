@@ -9,11 +9,12 @@ name = "ecs"
 crate-type = ["cdylib"]
 
 [dependencies]
-bevy = { version = "0.15.1", default-features = false }
+bevy = { version = "0.15.1", default-features = false, features = ["bevy_remote", "trace_tracy"] }
 bevy_ecs = "0.15.1"
 pyo3 = "0.23.3"
 rand = "0.8.5"
 tracing = "0.1.41"
+tracing-appender = "0.2.3"
 tracing-subscriber = "0.3.19"
 tracing-tracy = "0.11.4"
 tracy-client = "0.18.0"
