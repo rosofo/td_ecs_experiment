@@ -11,6 +11,8 @@ crate-type = ["cdylib"]
 [dependencies]
 bevy = { version = "0.15.1", default-features = false, features = ["bevy_remote", "trace_tracy"] }
 bevy_ecs = "0.15.1"
+iterstats = "0.6.0"
+itertools = "0.14.0"
 pyo3 = "0.23.3"
 rand = "0.8.5"
 tracing = "0.1.41"

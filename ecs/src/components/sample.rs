@@ -8,11 +8,19 @@ use crate::{
     touchdesigner::{TDCommand, TDCommands},
 };
 
+use super::TDComponent;
+
 #[derive(Component, Debug, Clone)]
 #[require(SampleValues)]
 pub struct Sample {
     pub timer: Timer,
     pub filter: String,
+}
+
+impl TDComponent for Sample {
+    fn plugin(app: &mut App) {
+        app.add_systems(Update, sample_ops);
+    }
 }
 
 #[derive(Component, Debug, Default)]

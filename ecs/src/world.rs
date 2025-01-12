@@ -10,7 +10,7 @@ use pyo3::prelude::*;
 use tracing::{debug, instrument};
 
 use crate::{
-    components::{randomize_pars, sample_ops, Random, Sample},
+    components::{randomize_pars, sample_ops, Random, Sample, Strat},
     op::Op,
     touchdesigner::{apply_deferred_td, TDApi, TDCommandQueue},
 };
@@ -67,7 +67,7 @@ impl PyWorld {
         app.add_plugins(MinimalPlugins.set(ScheduleRunnerPlugin::run_once()));
         app.add_plugins(RemotePlugin::default());
         app.add_plugins(RemoteHttpPlugin::default());
-        app.add_systems(Update, (randomize_pars, sample_ops));
+        app.add_plugins(crate::components::plugin);
         // app.add_systems(PostUpdate, report_world);
         app.insert_resource(TDCommandQueue { queue: Vec::new() });
 
@@ -97,6 +97,20 @@ impl PyWorld {
 
     fn remove_sample(&mut self, td_id: u32) {
         self.remove::<Sample>(td_id);
+    }
+
+    fn insert_apply(&mut self, td_id: u32, filter: String) {
+        self.insert(
+            td_id,
+            crate::components::Apply {
+                filter,
+                strat: Strat::Mean,
+            },
+        );
+    }
+
+    fn remove_apply(&mut self, td_id: u32) {
+        self.remove::<crate::components::Apply>(td_id);
     }
 
     #[instrument(skip(self))]

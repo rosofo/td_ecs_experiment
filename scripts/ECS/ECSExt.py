@@ -106,6 +106,8 @@ class ECSExt:
                     self.World.insert_random(change.op)
                 elif change.component == "sample":
                     self.World.insert_sample(change.op, 300, "amp")
+                elif change.component == "apply":
+                    self.World.insert_apply(change.op, "amp")
             elif change.type == "removed":
                 getattr(self.World, f"remove_{change.component}")(change.op)
             elif change.type == "despawned":
